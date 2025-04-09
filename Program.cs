@@ -1,6 +1,4 @@
 using WebApi.Services;
-using WebApi.Repositories;
-using WebApi.Interfaces;
 
 var builder = WebApplication.CreateBuilder(args);
 
