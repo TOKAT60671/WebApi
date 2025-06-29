@@ -50,20 +50,46 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
         }
 
             [HttpGet("{id}")]
-            public async Task<ActionResult> GetWorld(Guid id)
+        public async Task<ActionResult> GetWorld(Guid id)
+        {
+            try
             {
                 var userId = GetUserIdFromToken();
-                if (userId == null)
-                    return Unauthorized(new { reason = "User ID not found in access token." });
 
+                // Get all worlds for this user
                 var worlds = await repo.GetSaveGames(userId);
                 var world = worlds.FirstOrDefault(w => w.Id == id);
+
                 if (world == null)
-                    return NotFound();
+                {
+                    return NotFound(new
+                    {
+                        World = (SaveGameDto?)null,
+                        Objects = (IEnumerable<GObjectDto>?)null,
+                        Error = "Save slot not found."
+                    });
+                }
 
                 var objects = await repo.GetgObjects(id);
-                return Ok(new { World = world, Objects = objects });
+
+                return Ok(new
+                {
+                    World = world,
+                    Objects = objects,
+                    Error = (string?)null
+                });
             }
+            catch (Exception ex)
+            {
+                // Log ex if needed
+                return StatusCode(500, new
+                {
+                    World = (SaveGameDto?)null,
+                    Objects = (IEnumerable<GObjectDto>?)null,
+                    Error = "An unexpected error occurred: " + ex.Message
+                });
+            }
+        }
 
             [HttpPost("{id}/objects")]
             public async Task<IActionResult> AddObjects(Guid id, [FromBody] GObjectDto[] gObjects)

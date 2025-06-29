@@ -49,7 +49,7 @@ namespace WebApi.Services
         {
             using var sqlConnection = new SqlConnection(sqlConnectionString);
             return await sqlConnection.QueryAsync<GObjectDto>(
-                "SELECT Id, PrefabId, TypeIndex, PositionX, PositionY, SaveGameId FROM [GObject] WHERE SaveGameId = @saveGameId",
+                "SELECT Id, TypeIndex, PositionX, PositionY, SaveGameId FROM [GObject] WHERE SaveGameId = @saveGameId",
                 new { saveGameId }
             );
         }
@@ -63,9 +63,13 @@ namespace WebApi.Services
             );
             if (gObjects.Length > 0)
             {
+                // Ensure all objects have the correct SaveGameId
+                foreach (var obj in gObjects)
+                    obj.SaveGameId = saveGameId;
+
                 await sqlConnection.ExecuteAsync(
-                    "INSERT INTO [GObject] (Id, PrefabId, TypeIndex, PositionX, PositionY, SaveGameId) " +
-                    "VALUES (@Id, @PrefabId, @TypeIndex, @PositionX, @PositionY, @SaveGameId)",
+                    "INSERT INTO [GObject] (Id, TypeIndex, PositionX, PositionY, SaveGameId) " +
+                    "VALUES (@Id, @TypeIndex, @PositionX, @PositionY, @SaveGameId)",
                     gObjects
                 );
             }
