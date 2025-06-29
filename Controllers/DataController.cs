@@ -1,53 +1,83 @@
-﻿using WebApi.Dtos;
-using Microsoft.AspNetCore.Authorization;
-using Microsoft.AspNetCore.Mvc;
-using WebApi.Interfaces;
+﻿    using WebApi.Dtos;
+    using Microsoft.AspNetCore.Authorization;
+    using Microsoft.AspNetCore.Mvc;
+    using WebApi.Interfaces;
+    using System.Security.Claims;
+using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
-namespace WebApi.Controllers
-{
-    [ApiController]
-    [Route("api/Saves")]
-    [Authorize]
-    public class DataController(IDatabaseRepository repo, IAuthenticationService auth) : ControllerBase
+    namespace WebApi.Controllers
     {
-        [HttpPost]
-        public async Task<IActionResult> CreateWorld([FromBody] SaveGameDto saveGame)
+        [ApiController]
+        [Route("data/saves")]
+        [Authorize]
+        public class DataController(IDatabaseRepository repo) : ControllerBase
         {
-            await repo.InsertNewSaveGame(saveGame, auth.GetCurrentAuthenticatedUserID());
+        private Guid GetUserIdFromToken()
+        {
+            var idString = User.FindFirst(ClaimTypes.NameIdentifier)?.Value
+                ?? User.FindFirst("sub")?.Value;
+            if (Guid.TryParse(idString, out var guid))
+                return guid;
+            throw new UnauthorizedAccessException("User ID not found in access token.");
+        }
+
+        [HttpPost]
+        public async Task<IActionResult> CreateWorld([FromBody] CreateSaveGameRequest dto)
+        {
+            Guid userId = GetUserIdFromToken();
+            if (userId == null)
+                return Unauthorized(new { reason = "User ID not found in access token." });
+
+            var saveGame = new SaveGameDto
+            {
+                Id = Guid.NewGuid(),
+                Name = dto.Name,
+                UserId = userId
+            };
+
+            await repo.InsertNewSaveGame(saveGame, userId);
             return CreatedAtAction(nameof(GetWorld), new { id = saveGame.Id }, saveGame);
         }
 
-        [HttpGet]
+            [HttpGet]
         public async Task<ActionResult<IEnumerable<SaveGameDto>>> GetWorlds()
         {
-            var result = await repo.GetSaveGames(auth.GetCurrentAuthenticatedUserID());
-            return Ok(result);
+            var userId = GetUserIdFromToken();
+            if (userId == null)
+                return Unauthorized(new { reason = "User ID not found in access token." });
+
+            var worlds = await repo.GetSaveGames(userId);
+            return Ok(worlds);
         }
 
-        [HttpGet("{id}")]
-        public async Task<ActionResult<SaveGameDto>> GetWorld(Guid id)
-        {
-            var worlds = await repo.GetSaveGames(auth.GetCurrentAuthenticatedUserID());
-            var world = worlds.FirstOrDefault(w => w.Id == id);
-            if (world == null)
-                return NotFound();
+            [HttpGet("{id}")]
+            public async Task<ActionResult> GetWorld(Guid id)
+            {
+                var userId = GetUserIdFromToken();
+                if (userId == null)
+                    return Unauthorized(new { reason = "User ID not found in access token." });
 
-            var objects = await repo.GetgObjects(id.ToString());
-            return Ok(new { World = world, Objects = objects });
-        }
+                var worlds = await repo.GetSaveGames(userId);
+                var world = worlds.FirstOrDefault(w => w.Id == id);
+                if (world == null)
+                    return NotFound();
 
-        [HttpPost("{id}/objects")]
-        public async Task<IActionResult> AddObjects(Guid id, [FromBody] GObjectDto[] gObjects)
-        {
-            await repo.InsertgObjects(gObjects, id.ToString());
-            return Created();
-        }
+                var objects = await repo.GetgObjects(id);
+                return Ok(new { World = world, Objects = objects });
+            }
 
-        [HttpDelete("{id}")]
-        public async Task<IActionResult> DeleteWorld(Guid id)
-        {
-            await repo.DeleteSaveGame(id.ToString());
-            return NoContent();
+            [HttpPost("{id}/objects")]
+            public async Task<IActionResult> AddObjects(Guid id, [FromBody] GObjectDto[] gObjects)
+            {
+                await repo.InsertgObjects(gObjects, id);
+                return Created();
+            }
+
+            [HttpDelete("{id}")]
+            public async Task<IActionResult> DeleteWorld(Guid id)
+            {
+                await repo.DeleteSaveGame(id);
+                return NoContent();
+            }
         }
     }
-}

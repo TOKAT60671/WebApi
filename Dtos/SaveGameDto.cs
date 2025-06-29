@@ -1,9 +1,15 @@
-﻿namespace WebApi.Dtos
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace WebApi.Dtos
 {
     public class SaveGameDto
     {
         public Guid Id { get; set; }
         public string Name { get; set; }
-        public string UserId { get; set; }
+        public Guid UserId { get; set; }
+    }
+    public class CreateSaveGameRequest
+    {
+        public string Name { get; set; }
     }
 }

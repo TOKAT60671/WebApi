@@ -6,44 +6,61 @@ using WebApi.Services;
 
 namespace WebApi.Services
 {
-    public class DatabaseCommunicationService(string connectionString) : IDatabaseRepository
+    public class DatabaseCommunicationService(string sqlConnectionString) : IDatabaseRepository
     {
-        // Create a new 2D world for a user
-        public async Task InsertNewSaveGame(SaveGameDto saveGame, string userId)
+        public async Task InsertUser(UserDto user)
+        {
+            using var sqlConnection = new SqlConnection(sqlConnectionString);
+            await sqlConnection.ExecuteAsync(
+                "INSERT INTO [GUsers] (Id, UserName, Password) VALUES (@Id, @UserName, @Password)",
+                user
+            );
+        }
+
+        public async Task<UserDto?> GetUserByUserName(string userName)
+        {
+            using var sqlConnection = new SqlConnection(sqlConnectionString);
+            return await sqlConnection.QueryFirstOrDefaultAsync<UserDto>(
+                "SELECT Id, UserName, Password FROM [GUsers] WHERE UserName = @userName",
+                new { userName }
+            );
+        }
+
+        public async Task InsertNewSaveGame(SaveGameDto saveGame, Guid userId)
         {
             saveGame.UserId = userId;
-            using var sqlConnection = new SqlConnection(connectionString);
+            using var sqlConnection = new SqlConnection(sqlConnectionString);
             await sqlConnection.ExecuteAsync(
                 "INSERT INTO [SaveGame] (Id, Name, UserId) VALUES (@Id, @Name, @UserId)",
                 saveGame
             );
         }
 
-        // List all 2D worlds for a user
-        public async Task<IEnumerable<SaveGameDto>> GetSaveGames(string userId)
+        public async Task<IEnumerable<SaveGameDto>> GetSaveGames(Guid userId)
         {
-            using var sqlConnection = new SqlConnection(connectionString);
+            using var sqlConnection = new SqlConnection(sqlConnectionString);
             return await sqlConnection.QueryAsync<SaveGameDto>(
-                "SELECT * FROM [SaveGame] WHERE UserId = @userId",
+                "SELECT Id, Name, UserId FROM [SaveGame] WHERE UserId = @userId",
                 new { userId }
             );
         }
 
-        // View all objects in a specific 2D world
-        public async Task<IEnumerable<GObjectDto>> GetgObjects(string saveGameId)
+        public async Task<IEnumerable<GObjectDto>> GetgObjects(Guid saveGameId)
         {
-            using var sqlConnection = new SqlConnection(connectionString);
+            using var sqlConnection = new SqlConnection(sqlConnectionString);
             return await sqlConnection.QueryAsync<GObjectDto>(
-                "SELECT * FROM [GObject] WHERE SaveGameId = @saveGameId",
+                "SELECT Id, PrefabId, TypeIndex, PositionX, PositionY, SaveGameId FROM [GObject] WHERE SaveGameId = @saveGameId",
                 new { saveGameId }
             );
         }
 
-        // Add objects to a 2D world (replaces all objects for that world)
-        public async Task InsertgObjects(GObjectDto[] gObjects, string saveGameId)
+        public async Task InsertgObjects(GObjectDto[] gObjects, Guid saveGameId)
         {
-            using var sqlConnection = new SqlConnection(connectionString);
-            await sqlConnection.ExecuteAsync("DELETE FROM [GObject] WHERE SaveGameId = @saveGameId", new { saveGameId });
+            using var sqlConnection = new SqlConnection(sqlConnectionString);
+            await sqlConnection.ExecuteAsync(
+                "DELETE FROM [GObject] WHERE SaveGameId = @saveGameId",
+                new { saveGameId }
+            );
             if (gObjects.Length > 0)
             {
                 await sqlConnection.ExecuteAsync(
@@ -54,10 +71,9 @@ namespace WebApi.Services
             }
         }
 
-        // Delete a 2D world and its objects
-        public async Task DeleteSaveGame(string saveGameId)
+        public async Task DeleteSaveGame(Guid saveGameId)
         {
-            using var sqlConnection = new SqlConnection(connectionString);
+            using var sqlConnection = new SqlConnection(sqlConnectionString);
             await sqlConnection.ExecuteAsync(
                 "DELETE FROM [GObject] WHERE SaveGameId = @saveGameId; DELETE FROM [SaveGame] WHERE Id = @saveGameId",
                 new { saveGameId }
