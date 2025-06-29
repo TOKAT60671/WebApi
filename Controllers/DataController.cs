@@ -1,8 +1,8 @@
-﻿    using WebApi.Dtos;
-    using Microsoft.AspNetCore.Authorization;
-    using Microsoft.AspNetCore.Mvc;
-    using WebApi.Interfaces;
-    using System.Security.Claims;
+﻿using WebApi.Dtos;
+using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Mvc;
+using WebApi.Interfaces;
+using System.Security.Claims;
 using Microsoft.EntityFrameworkCore.Metadata.Internal;
 
     namespace WebApi.Controllers
@@ -25,14 +25,13 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
         public async Task<IActionResult> CreateWorld([FromBody] CreateSaveGameRequest dto)
         {
             Guid userId = GetUserIdFromToken();
-            if (userId == null)
-                return Unauthorized(new { reason = "User ID not found in access token." });
 
             var saveGame = new SaveGameDto
             {
                 Id = Guid.NewGuid(),
                 Name = dto.Name,
-                UserId = userId
+                UserId = userId,
+                Slot = dto.Slot
             };
 
             await repo.InsertNewSaveGame(saveGame, userId);
@@ -81,3 +80,4 @@ using Microsoft.EntityFrameworkCore.Metadata.Internal;
             }
         }
     }
+

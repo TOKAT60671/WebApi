@@ -31,7 +31,7 @@ namespace WebApi.Services
             saveGame.UserId = userId;
             using var sqlConnection = new SqlConnection(sqlConnectionString);
             await sqlConnection.ExecuteAsync(
-                "INSERT INTO [SaveGame] (Id, Name, UserId) VALUES (@Id, @Name, @UserId)",
+                "INSERT INTO [SaveGame] (Id, Name, UserId, Slot) VALUES (@Id, @Name, @UserId, @Slot)",
                 saveGame
             );
         }
@@ -40,7 +40,7 @@ namespace WebApi.Services
         {
             using var sqlConnection = new SqlConnection(sqlConnectionString);
             return await sqlConnection.QueryAsync<SaveGameDto>(
-                "SELECT Id, Name, UserId FROM [SaveGame] WHERE UserId = @userId",
+                "SELECT Id, Name, UserId, Slot FROM [SaveGame] WHERE UserId = @userId",
                 new { userId }
             );
         }
